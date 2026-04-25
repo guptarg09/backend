@@ -8,12 +8,9 @@
   ],
   "license": "ISC",
   "author": "Ritesh Gupta",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.14"
+    "dev": "nodemon src/index.js"
   }
 }
