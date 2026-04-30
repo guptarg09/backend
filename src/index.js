@@ -4,6 +4,8 @@ dns.setServers(["8.8.8.8", "1.1.1.1"]); // Forces Google & Cloudflare DNS
 import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
+import connectDB from "./db/index.js";
+import { error } from "node:console";
 // ... rest of your code
 
 
@@ -13,29 +15,42 @@ import mongoose from "mongoose";
 
 dotenv.config();
 
-const app = express();
+// const app = express();
 
-(async () => {
-    try {
+// (async () => {
+//     try {
 
-        console.log("Mongo URI:", process.env.MONGODB_URI);
+//         console.log("Mongo URI:", process.env.MONGODB_URI);
 
-        // Connect MongoDB
-        await mongoose.connect(process.env.MONGODB_URI);
+//         // Connect MongoDB
+//         await mongoose.connect(process.env.MONGODB_URI);
 
-        console.log("✅ MongoDB Connected");
+//         console.log("✅ MongoDB Connected");
 
-        app.on("error", (error) => {
-            console.log("ERROR:", error);
-            throw error;
-        });
+//         app.on("error", (error) => {
+//             console.log("ERROR:", error);
+//             throw error;
+//         });
 
-        app.listen(process.env.PORT || 8000, () => {
-            console.log(`🚀 App is listening on port ${process.env.PORT}`);
-        });
+//         app.listen(process.env.PORT || 8000, () => {
+//             console.log(`🚀 App is listening on port ${process.env.PORT}`);
+//         });
 
-    } catch (error) {
-        console.error("❌ ERROR:", error);
-        process.exit(1);
-    }
-})();
+//     } catch (error) {
+//         console.error("❌ ERROR:", error);
+//         process.exit(1);
+//     }
+// })();
+
+
+
+
+connectDB()
+.then(() => {
+    app.listen(process.env.PORT || 8000, () => {
+        console.log(`server is running at port : ${process.env.PORT}`);
+    })
+})
+.catch((err) => {
+    console.log("MONGO DB connection failed !!!", error);
+})
