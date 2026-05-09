@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiErrors } from "../utils/ApiErrors.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary} from "../utils/cloudinary.js";
-import { apiResponse } from "../utils/apiResponse.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 
 const registerUser = asyncHandler( async (req, res) => {
@@ -28,16 +28,11 @@ const registerUser = asyncHandler( async (req, res) => {
 
     // validate user details - not empty, email format, password strength
     if(
-        [fullname, username, email, password].some((field) => field?.trim() === "")
+        [fullName, username, email, password].some((field) => field?.trim() === "")
     ) {
         throw new ApiErrors(400, "All fields are required")
     }
-    if(!/^[\w-]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
-        throw new ApiErrors(400, "Invalid email format")
-    }
-    if(!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&]).{6,}$/.test(password)) {
-    throw new ApiErrors(400, "Password must contain letter, number and special character");
-    }
+    
 
 
     // check if user already exists in DB : username, email
@@ -52,17 +47,26 @@ const registerUser = asyncHandler( async (req, res) => {
 
     const avatarLocalPath = req.files?.avatar[0]?.path
     const coverImageLocalPath = req.files?.coverImage[0]?.path
+    console.log("Avatar local path:", avatarLocalPath)
+    console.log("Cover image local path:", coverImageLocalPath)
+
+    console.log("FILE:", req.file);
+console.log("FILES:", req.files);
+console.log("BODY:", req.body);
 
     if(!avatarLocalPath) {
         throw new ApiErrors(400, "Avatar is required")
     }
 
     // upload them to cloudinary, avatar
-    const avatarUploadResponse = await uploadOnCloudinary(avatarLocalPath)  // uploadOnCloudinary is a function that we have created in utils/cloudinary.js to upload a file on cloudinary and return the response
-    const coverImageUploadResponse = await uploadOnCloudinary(coverImageLocalPath)
+    // const avatarUploadResponse = await uploadOnCloudinary(avatarLocalPath)  // uploadOnCloudinary is a function that we have created in utils/cloudinary.js to upload a file on cloudinary and return the response
+    // const coverImageUploadResponse = await uploadOnCloudinary(coverImageLocalPath)
+
+    const avatarUploadResponse = await uploadOnCloudinary(avatarLocalPath.replace(/\\/g, "/"))
+    const coverImageUploadResponse = await uploadOnCloudinary(coverImageLocalPath?.replace(/\\/g, "/"))
 
     if(!avatarUploadResponse) {
-        throw new ApiErrors(404, "Avatar file is required");
+        throw new ApiErrors(404, "Avatar file is required!");
     }
 
     // create user object - create entery in DB
@@ -83,13 +87,12 @@ const registerUser = asyncHandler( async (req, res) => {
     }
 
     return res.status(201).json(
-        new apiResponse(200, createdUser, "User registered successfully")
+        new ApiResponse(200, createdUser, "User registered successfully")
     ) 
 
+    
+}) 
 export { registerUser }
-
-})
-
 
 
 

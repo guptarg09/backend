@@ -42,7 +42,7 @@ const userSchema = new Schema(
     password: {
       type: String,
       required: [true, "Password is required"],
-      select: flase
+      select: false
     },
     refreshToken: {
       type: String
@@ -56,10 +56,9 @@ const userSchema = new Schema(
 
 // 🔐 Hash password before saving
 userSchema.pre("save", async function (next) {  // we don't use iffi fun here beacuse it don't support this context
-  if (!this.isModified("password")) return next();  // runs when password feild is changed!
+  if (!this.isModified("password")) return;  // runs when password feild is changed!
 
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
 
@@ -70,33 +69,33 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 
 
 // Generate Access Token (short-lived token for authentication)
-userSchema.methods.generateAccessToken = function(){
-    return jwt.sign(
-        {
-            _id: this.id,
-            email: this.email,
-            username: this.username,
-            fullName: this.fullName,
-        },
-        process.env.ACCESS_TOKEN_SECRET,
-        {
-            expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN
-        }
-    )
+userSchema.methods.generateAccessToken = function () {
+  return jwt.sign(
+    {
+      _id: this.id,
+      email: this.email,
+      username: this.username,
+      fullName: this.fullName,
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN
+    }
+  )
 }
 
 
 //  Generate Refresh Token (long-lived token)
-userSchema.methods.generateRefreshToken = function(){
-    return jwt.sign(
-        {
-            _id: this._id,
-        },
-        process.env.REFRESH_TOKEN_SECRET,
-        {
-            expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN 
-        }
-    )
+userSchema.methods.generateRefreshToken = function () {
+  return jwt.sign(
+    {
+      _id: this._id,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN
+    }
+  )
 }
 
 export const User = mongoose.model("User", userSchema);
