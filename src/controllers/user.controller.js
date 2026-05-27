@@ -2,22 +2,37 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiErrors } from "../utils/ApiErrors.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary} from "../utils/cloudinary.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 
 const generateAccesAndREfreshToken = async(userId) => {
     try {
+        console.log("Step 1: Finding user with ID:", userId);
         const user = await User.findById(userId)
+        console.log("Step 2: User found:", user ? "yes" : "no");
+
+        if (!user) {
+            throw new Error("User not found")
+        }
+
+        console.log("Step 3: Generating access token");
         const accessToken = user.generateAccessToken()
+        console.log("Step 4: Generating refresh token");
         const refreshToken = user.generateRefreshToken()
 
+        console.log("Step 5: Setting refresh token on user");
         user.refreshToken = refreshToken
-        await user.save({validateBeforeSave: false}) 
 
+        console.log("Step 6: Saving user");
+        await user.save({validateBeforeSave: false})
+
+        console.log("Step 7: Returning tokens");
         return { accessToken, refreshToken }
 
 
     } catch(error) {
-        throw new ApiErrors(500, "Token generation failed")
+        console.error("Token Generation Error Details:", error);
+        throw new ApiErrors(500, `Token generation failed: ${error.message}`)
     }
 }
 
@@ -120,52 +135,73 @@ const registerUser = asyncHandler( async (req, res) => {
 
 
 // login user
-const loginUser = asyncHandler( async (req, res) => {
-    // req body -> email, password
-    // username or email
-    // find the user
-    // password match
-    // generate access toekn and refresh token
-    // send cookie
+const loginUser = asyncHandler(async (req, res) => {
 
+    // req body -> email, password 
+    //  username or email 
+    //  find the user 
+    //  password match 
+    //  generate access toekn and refresh token 
+    //  send cookie
 
-    const {email, username, password} = req.body
+    const { email, username, password } = req.body
 
-    if(!email && !username) {
-        throw new ApiErrors(400, "Email or username is required for login")
+    // validation
+    if ((!email && !username) || !password) {
+        throw new ApiErrors(
+            400,
+            "Email/username and password are required"
+        )
     }
 
+    // find user
     const user = await User.findOne({
-        $or: [{ email }, { username }]  
-    })
+        $or: [{ email }, { username }]
+    }).select("+password +refreshToken")  // we need password and refresh token for login, but we don't want to send them in response, so we select them here and then remove them before sending response  
 
-    if(!user) {
-        throw new ApiErrors(404, "User not found with this email or username")
+    if (!user) {
+        throw new ApiErrors(404, "User not found")
     }
 
+    // password check
     const isPasswordValid = await user.isPasswordCorrect(password)
 
-    if(!isPasswordValid) {
+    if (!isPasswordValid) {
         throw new ApiErrors(401, "Invalid password")
     }
 
-    const { accessToken, refreshToken } = await generateAccesAndREfreshToken(user._id)
-    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+    // generate tokens
+    const { accessToken, refreshToken } =
+        await generateAccesAndREfreshToken(user._id)
 
+    // remove sensitive fields
+    const loggedInUser = await User.findById(user._id)
+        .select("-password -refreshToken")
 
+    // cookie options
     const options = {
         httpOnly: true,
         secure: true
     }
+
+    // response
     return res.status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
-    .json(
-        new ApiResponse(200, { user: loggedInUser, accessToken, refreshToken }, "User logged in successfully")
-    )
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: loggedInUser,
+                    accessToken,
+                    refreshToken
+                },
+                "User logged in successfully"
+            )
+        )
 })
 
-
+// logout user
 const logoutUser = asyncHandler( async (req, res) => {
     
     // clear cookie
@@ -200,7 +236,7 @@ const logoutUser = asyncHandler( async (req, res) => {
 
 export { registerUser, loginUser, logoutUser };
 
-        
+
 
 
 // -------FULL-FLOW OF A REQUEST-------

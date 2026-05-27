@@ -55,8 +55,8 @@ const userSchema = new Schema(
 
 
 // 🔐 Hash password before saving
-userSchema.pre("save", async function (next) {  // we don't use iffi fun here beacuse it don't support this context
-  if (!this.isModified("password")) return;  // runs when password feild is changed!
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return;
 
   this.password = await bcrypt.hash(this.password, 10);
 });
@@ -64,6 +64,8 @@ userSchema.pre("save", async function (next) {  // we don't use iffi fun here be
 
 // 🔑 Compare password
 userSchema.methods.isPasswordCorrect = async function (password) {
+  // console.log(password)
+  // console.log(this.password)
   return await bcrypt.compare(password, this.password);
 };
 
@@ -72,7 +74,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
-      _id: this.id,
+      _id: this._id,
       email: this.email,
       username: this.username,
       fullName: this.fullName,
