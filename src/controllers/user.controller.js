@@ -3,6 +3,7 @@ import { ApiErrors } from "../utils/ApiErrors.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary} from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
 
 
 const generateAccesAndREfreshToken = async(userId) => {
@@ -24,7 +25,7 @@ const generateAccesAndREfreshToken = async(userId) => {
         user.refreshToken = refreshToken
 
         console.log("Step 6: Saving user");
-        await user.save({validateBeforeSave: false})
+        await user.save({validateBeforeSave: false})  //Because only refresh token changed.No need to validate all fields again.
 
         console.log("Step 7: Returning tokens");
         return { accessToken, refreshToken }
@@ -36,7 +37,7 @@ const generateAccesAndREfreshToken = async(userId) => {
     }
 }
 
-
+// register user
 const registerUser = asyncHandler( async (req, res) => {
     
     // ------ LOGIC TO REGISTER A USER ------
@@ -76,7 +77,7 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiErrors(409, "User with this username or email already exists")
     }
 
-
+   // logic to handle file uploads, we are using multer for file uploads, multer will save the files in local storage and give us the path of the file, we will get the path of the file and then upload it to cloudinary, after uploading to cloudinary we will get the url of the file and then we will save that url in our DB
     const avatarLocalPath = req.files?.avatar[0]?.path
     // const coverImageLocalPath = req.files?.coverImage[0]?.path
 
@@ -110,10 +111,10 @@ const registerUser = asyncHandler( async (req, res) => {
 
     // create user object - create entery in DB
     const user = await User.create({
-        fullName,
+        fullName: fullName.trim(),
         avatar: avatarUploadResponse.url,
         coverImage: coverImageUploadResponse?.url || "",
-        email,
+        email: email.toLowerCase(),
         password,
         username: username.toLowerCase()
     })
@@ -133,16 +134,15 @@ const registerUser = asyncHandler( async (req, res) => {
 }) 
 
 
-
 // login user
 const loginUser = asyncHandler(async (req, res) => {
 
-    // req body -> email, password 
+    //  req body -> email, password 
     //  username or email 
     //  find the user 
     //  password match 
     //  generate access toekn and refresh token 
-    //  send cookie
+    //  send cookie 
 
     const { email, username, password } = req.body
 
@@ -186,6 +186,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
     // response
     return res.status(200)
+        // Stores access token in browser cookies.
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
         .json(
@@ -200,6 +201,7 @@ const loginUser = asyncHandler(async (req, res) => {
             )
         )
 })
+
 
 // logout user
 const logoutUser = asyncHandler( async (req, res) => {
@@ -233,8 +235,60 @@ const logoutUser = asyncHandler( async (req, res) => {
 })
 
 
+// regreshing access token
+const refreshAccessToken = asyncHandler( async (req, res) => {
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken  // We can get refresh token from cookie or from request body, depending on how the frontend is sending it. Some frontend may send it in cookie, some may send it in request body, so we are checking both places.
 
-export { registerUser, loginUser, logoutUser };
+    if(!incomingRefreshToken) {
+        throw new ApiErrors(401, "Refresh token is missing/Unauthorized request")
+    }
+
+    // verify incoming refresh token 
+    try {
+            const decodedToken = jwt.verify(
+            incomingRefreshToken, 
+            process.env.REFRESH_TOKEN_SECRET
+        )
+        // find user based on decoded token's user id
+        const user = await User.findById(decodedToken._id)
+    
+        if(!user) {
+            throw new ApiErrors(401, "Invalid refresh token: user not found")
+        }
+    
+        // check if incoming refresh token matches the one in DB
+        if(user?.refreshToken !== incomingRefreshToken) {
+            throw new ApiErrors(401, "Invalid refresh token: token does not match")
+        }
+
+        // generate new access token and refresh token
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+    
+        const { accessToken, newrefreshToken } = await generateAccesAndREfreshToken(user._id)
+        return res
+        .status(200)
+        .cookie("accestoken", accessToken, options)
+        .cookie("refreshToken", newrefreshToken, options)
+        .json(
+            new ApiResponce(
+                200,
+                { acckessToken, newrefreshToken },
+                "Access token refreshed successfully"
+    
+            )
+       )
+    }
+    catch(error) {
+        throw new ApiErrors(401, "Invalid refresh token")
+    }
+
+
+})
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken };
 
 
 
