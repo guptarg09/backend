@@ -289,10 +289,6 @@ const refreshAccessToken = asyncHandler( async (req, res) => {
 })
 
 
-
-//// other functions like getUserProfile, updateUserProfile, changePassword, forgotPassword, resetPassword can be implemented in similar way as above functions, we need to follow the same steps like validation, finding user, updating user, sending response etc.
-
-
 // changePassword
 const changeCurrentPassword = asyncHandler( async(req, res) => {
     const {oldPassword, newPassword} = req.body
@@ -382,7 +378,7 @@ const updateUserAvatar = asyncHandler( async(req, res) => {
 })
 
 
-
+// updateCoverImage
 const updateUserCoverImage = asyncHandler( async(req, res) => {
 
     const coverImageLocalPath = req.file?.path
