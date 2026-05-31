@@ -414,7 +414,7 @@ const updateUserCoverImage = asyncHandler( async(req, res) => {
 
 
 // getUserChannelProfile
-const GetUserChannelProfile = asyncHandler( async(req, res) => {
+const getUserChannelProfile = asyncHandler( async(req, res) => {
 
     const { username } = req.params
 
@@ -562,6 +562,7 @@ export {
     updateAccountDetails, 
     updateUserAvatar,
     updateUserCoverImage,
+    getUserChannelProfile,
     getWatchHistory
 };
 
