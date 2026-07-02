@@ -29,7 +29,12 @@ router.route("/login").post(loginUser)
 
 router.route("/logout").post(verifyJWT, logoutUser)  //secured route 
 
-router.route("/refresh-token").post(refreshAccessToken)   //secured route 
+// router.route("/refresh-token").post(refreshAccessToken)   //secured route 
+
+router.post("/refresh-token", (req, res, next) => {
+    console.log("Route hit");
+    next();
+}, refreshAccessToken);
 
 router.route("/change-password").post(verifyJWT, changeCurrentPassword) //secured route
 

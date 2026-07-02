@@ -212,7 +212,7 @@ const logoutUser = asyncHandler( async (req, res) => {
      await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: { refreshToken: undefined }
+            $unset: { refreshToken: 1 }
         },
         {
             new: true
@@ -236,9 +236,11 @@ const logoutUser = asyncHandler( async (req, res) => {
 })
 
 
-// regreshAccessToken 
+// refreshAccessToken 
 const refreshAccessToken = asyncHandler( async (req, res) => {
+    console.log("Refresh token request received. Checking for refresh token...");
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken  // We can get refresh token from cookie or from request body, depending on how the frontend is sending it. Some frontend may send it in cookie, some may send it in request body, so we are checking both places.
+    console.log("Incoming refresh token!:", incomingRefreshToken);
 
     if(!incomingRefreshToken) {
         throw new ApiErrors(401, "Refresh token is missing/Unauthorized request")
@@ -267,22 +269,23 @@ const refreshAccessToken = asyncHandler( async (req, res) => {
             httpOnly: true,
             secure: true
         }
-    
-        const { accessToken, newrefreshToken } = await generateAccesAndREfreshToken(user._id)
+
+        const { accessToken, refreshToken } = await generateAccesAndREfreshToken(user._id)
         return res
         .status(200)
-        .cookie("accestoken", accessToken, options)
-        .cookie("refreshToken", newrefreshToken, options)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
         .json(
-            new ApiResponce(
+            new ApiResponse(
                 200,
-                { acckessToken, newrefreshToken },
+                { accessToken, refreshToken },
                 "Access token refreshed successfully"
-    
+
             )
        )
     }
     catch(error) {
+        console.log("Refresh Error:", error.message);
         throw new ApiErrors(401, "Invalid refresh token")
     }
 
@@ -293,6 +296,8 @@ const refreshAccessToken = asyncHandler( async (req, res) => {
 // changePassword
 const changeCurrentPassword = asyncHandler( async(req, res) => {
     const {oldPassword, newPassword} = req.body
+    // console.log("----Old Password:", oldPassword);
+    // console.log("----New Password:", newPassword);
 
     const user = await User.findById(req.user._id)
     const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
@@ -340,7 +345,7 @@ const updateAccountDetails = asyncHandler( async(req, res) => {
 
     return res
     .status(200)
-    .json(new ApiResponse(200), user, "Account details updated successfully")
+    .json(new ApiResponse(200, user, "Account details updated successfully"))
 })
 
 
@@ -389,7 +394,7 @@ const updateUserCoverImage = asyncHandler( async(req, res) => {
 
     }
 
-    const coverImage = await uploadOnCloudinary(avatarLocalPath)
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
     if(!coverImage.url) {
         throw new ApiErrors(400, "Error while uploading to cover image")
@@ -432,9 +437,9 @@ const getUserChannelProfile = asyncHandler( async(req, res) => {
         },
         // lookup to get subscriber
         {
-            $lookup: {  
+            $lookup: {
                 from: "subscriptions",
-                localFeild: "_id",
+                localField: "_id",
                 foreignField: "channel",
                 as: "subscribers"
             }
@@ -443,7 +448,7 @@ const getUserChannelProfile = asyncHandler( async(req, res) => {
         {
             $lookup: {
                 from: "subscriptions",
-                localFeild: "_id",
+                localField: "_id",
                 foreignField: "subscriber",
                 as: "subscribedTo"
             }
@@ -455,7 +460,7 @@ const getUserChannelProfile = asyncHandler( async(req, res) => {
                     $size: "$subscribers"
                 },
                 channelsSubscribedToCount: {
-                    $size: "subscribedTo"
+                    $size: "$subscribedTo"
                 },
                 isSubscribed: {
                     $cond: {
@@ -506,9 +511,9 @@ const getWatchHistory = asyncHandler( async(req, res) => {
         {
             $lookup: {
                 from: "videos",
-                localField: "warchHistory",
+                localField: "watchHistory",
                 foreignField: "_id",
-                as: "warchHistory",
+                as: "watchHistory",
                 pipeline: [
                     {
                         $lookup: {
@@ -545,7 +550,7 @@ const getWatchHistory = asyncHandler( async(req, res) => {
             200,
             user[0].watchHistory,
             "Watch history fetched successfully"
-        )        
+        )
     )
 })
 
