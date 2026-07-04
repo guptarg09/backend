@@ -55,14 +55,14 @@ const registerUser = asyncHandler( async (req, res) => {
 
 
     // get user details from frontend
-    const { fullName, username, email, password } = req.body
+    const { fullName, username, email, password } = req.body || {}
 
     console.log("User details from frontend:", { fullName, username, email, password })
 
 
     // validate user details - not empty, email format, password strength
     if(
-        [fullName, username, email, password].some((field) => field?.trim() === "")
+        [fullName, username, email, password].some((field) => !field || field.trim() === "")
     ) {
         throw new ApiErrors(400, "All fields are required")
     }
@@ -145,7 +145,7 @@ const loginUser = asyncHandler(async (req, res) => {
     //  generate access toekn and refresh token 
     //  send cookie 
 
-    const { email, username, password } = req.body
+    const { email, username, password } = req.body || {}
 
     // validation
     if ((!email && !username) || !password) {
@@ -239,7 +239,7 @@ const logoutUser = asyncHandler( async (req, res) => {
 // refreshAccessToken 
 const refreshAccessToken = asyncHandler( async (req, res) => {
     console.log("Refresh token request received. Checking for refresh token...");
-    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken  // We can get refresh token from cookie or from request body, depending on how the frontend is sending it. Some frontend may send it in cookie, some may send it in request body, so we are checking both places.
+    const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken  // We can get refresh token from cookie or from request body, depending on how the frontend is sending it. Some frontend may send it in cookie, some may send it in request body, so we are checking both places.
     console.log("Incoming refresh token!:", incomingRefreshToken);
 
     if(!incomingRefreshToken) {
@@ -295,11 +295,15 @@ const refreshAccessToken = asyncHandler( async (req, res) => {
 
 // changePassword
 const changeCurrentPassword = asyncHandler( async(req, res) => {
-    const {oldPassword, newPassword} = req.body
+    const {oldPassword, newPassword} = req.body || {}
     // console.log("----Old Password:", oldPassword);
     // console.log("----New Password:", newPassword);
 
-    const user = await User.findById(req.user._id)
+    if (!oldPassword || !newPassword) {
+        throw new ApiErrors(400, "Both old password and new password are required")
+    }
+
+    const user = await User.findById(req.user._id).select("+password")
     const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
 
     if(!isPasswordCorrect) {
@@ -311,7 +315,7 @@ const changeCurrentPassword = asyncHandler( async(req, res) => {
 
     return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Password changes successfully"))
+    .json(new ApiResponse(200, {}, "Password changed successfully"))
 })
 
 
@@ -326,10 +330,10 @@ const getCurrentUser = asyncHandler( async(req, res) => {
 // update account details
 const updateAccountDetails = asyncHandler( async(req, res) => {
 
-    const {fullName, email} = req.body
+    const {fullName, email} = req.body || {}
 
     if(!fullName || !email) {
-        throw new ApiErrors(400, "All feilds are requird")
+        throw new ApiErrors(400, "All fields are required")
     }
 
     const user = await User.findByIdAndUpdate(
@@ -360,7 +364,7 @@ const updateUserAvatar = asyncHandler( async(req, res) => {
 
     }
 
-    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    const avatar = await uploadOnCloudinary(avatarLocalPath.replace(/\\/g, "/"))
 
     if(!avatar.url) {
         throw new ApiErrors(400, "Error while uploading to avatar")
@@ -394,7 +398,7 @@ const updateUserCoverImage = asyncHandler( async(req, res) => {
 
     }
 
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath.replace(/\\/g, "/"))
 
     if(!coverImage.url) {
         throw new ApiErrors(400, "Error while uploading to cover image")
